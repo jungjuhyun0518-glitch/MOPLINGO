@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>모르링고 - 몽골어 스마트 학습 App</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        duo: {
+                            green: '#8b5a2b',
+                            greenDark: '#6f441d',
+                            blue: '#1cb0f6',
+                            blueDark: '#1899d6',
+                            purple: '#ce82ff',
+                            purpleDark: '#af62e0',
+                            yellow: '#ffc800',
+                            yellowDark: '#e5b200',
+                            orange: '#ff9600',
+                            red: '#ff4b4b',
+                            redDark: '#ea2b2b',
+                            gray: '#e5e5e5',
+                            cardBg: '#f7f9fa'
+                        },
+                        mongol: {
+                            blue: '#0033a0',
+                            red: '#da291c',
+                            gold: '#f2a900'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Noto Sans KR', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'duo-sm': '0 3px 0 0',
+                        'duo': '0 4px 0 0',
+                        'duo-lg': '0 6px 0 0',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-duo-green {
+            background-color: #8b5a2b;
+            color: #ffffff;
+            box-shadow: 0 4px 0 0 #6f441d;
+        }
+        .btn-duo-green:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 #6f441d;
+        }
+        .btn-duo-blue {
+            background-color: #1cb0f6;
+            color: #ffffff;
+            box-shadow: 0 4px 0 0 #1899d6;
+        }
+        .btn-duo-blue:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 #1899d6;
+        }
+        .btn-duo-purple {
+            background-color: #ce82ff;
+            color: #ffffff;
+            box-shadow: 0 4px 0 0 #af62e0;
+        }
+        .btn-duo-purple:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 #af62e0;
+        }
+        .btn-duo-yellow {
+            background-color: #ffc800;
+            color: #ffffff;
+            box-shadow: 0 4px 0 0 #e5b200;
+        }
+        .btn-duo-yellow:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 0 #e5b200;
+        }
+        
+        .stage-node {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stage-node:hover:not(.locked) {
+            transform: scale(1.08);
+        }
+        .bounce-gentle {
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans min-h-screen flex flex-col pb-20 md:pb-0">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'morlingo-mongol-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "demo-api-key",
+                authDomain: "demo-app.firebaseapp.com",
+                projectId: "demo-app",
+                storageBucket: "demo-app.appspot.com",
+                messagingSenderId: "123456789",
+                appId: "1:123456789:web:123456"
+            };
+
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.firebaseAuth = getAuth(window.firebaseApp);
+        window.firebaseDb = getFirestore(window.firebaseApp);
+        window.appId = appId;
+
+        window.initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(window.firebaseAuth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(window.firebaseAuth);
+                }
+            } catch (err) {
+                console.warn("Firebase Auth fallback active:", err);
+            }
+        };
+
+        window.initAuth();
+    </script>
+
+    <header class="bg-white border-b-2 border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-xs">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <!-- App Logo & Title -->
+            <div class="flex items-center space-x-2.5 cursor-pointer" onclick="switchNavTab('map')">
+                <div class="w-10 h-10 rounded-2xl bg-duo-green flex items-center justify-center text-white text-2xl font-black shadow-duo-sm border-2 border-duo-greenDark">
+                    🇲🇳
+                </div>
+                <div>
+                    <h1 class="text-xl font-black text-slate-800 tracking-tight leading-none">모르링고</h1>
+                    <span class="text-[10px] font-black text-duo-green uppercase tracking-widest">МОРЬLINGO</span>
+                </div>
+            </div>
+
+            <!-- Header Stats -->
+            <div class="flex items-center space-x-2 sm:space-x-4 text-sm font-extrabold">
+                <button onclick="openStreakCalendarModal()" class="flex items-center space-x-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 px-3 py-1.5 rounded-2xl border-2 border-amber-200 transition">
+                    <i class="fa-solid fa-fire text-amber-500 text-lg animate-pulse"></i>
+                    <span id="headerStreakVal">1</span>
+                </button>
+
+                <div class="flex items-center space-x-1.5 bg-sky-50 text-sky-600 px-3 py-1.5 rounded-2xl border-2 border-sky-200">
+                    <i class="fa-solid fa-bolt text-sky-500 text-lg"></i>
+                    <span id="headerXPVal">0</span>
+                </div>
+
+                <div class="hidden sm:flex items-center space-x-1.5 bg-purple-50 text-purple-600 px-3 py-1.5 rounded-2xl border-2 border-purple-200">
+                    <i class="fa-solid fa-trophy text-purple-500 text-base"></i>
+                    <span id="headerLeagueVal">브론즈</span>
+                </div>
+
+                <button onclick="openAuthModal()" class="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 px-3 py-1.5 rounded-2xl text-slate-700 transition">
+                    <i class="fa-solid fa-circle-user text-base text-duo-blue"></i>
+                    <span id="headerUserName" class="hidden sm:inline text-xs font-black">내 계정</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto w-full flex-1 flex flex-col md:flex-row gap-6 p-4">
+        
+        <!-- Desktop Sidebar Navigation -->
+        <nav class="hidden md:flex flex-col w-52 shrink-0 space-y-3 sticky top-20 h-fit">
+            <button onclick="switchNavTab('map')" id="sidebar-map" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl font-extrabold text-slate-600 hover:bg-slate-100 border-2 border-transparent transition">
+                <i class="fa-solid fa-map text-xl text-duo-green"></i>
+                <span>학습 맵</span>
+            </button>
+            <button onclick="switchNavTab('cyrillic')" id="sidebar-cyrillic" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl font-extrabold text-slate-600 hover:bg-slate-100 border-2 border-transparent transition">
+                <i class="fa-solid fa-font text-xl text-duo-blue"></i>
+                <span>0과: 키릴자</span>
+            </button>
+            <button onclick="switchNavTab('leaderboard')" id="sidebar-leaderboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl font-extrabold text-slate-600 hover:bg-slate-100 border-2 border-transparent transition">
+                <i class="fa-solid fa-trophy text-xl text-duo-yellow"></i>
+                <span>리더보드</span>
+            </button>
+            <button onclick="switchNavTab('achievements')" id="sidebar-achievements" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl font-extrabold text-slate-600 hover:bg-slate-100 border-2 border-transparent transition">
+                <i class="fa-solid fa-medal text-xl text-duo-purple"></i>
+                <span>업적 & 달력</span>
+            </button>
+        </nav>
+
+        <!-- Main View Tabs Container -->
+        <main class="flex-1 w-full min-w-0">
+
+            <section id="view-map" class="view-content space-y-6">
+                <div class="bg-gradient-to-r from-[#8b5a2b] to-[#a97142] rounded-3xl p-6 text-white shadow-duo border-b-4 border-duo-greenDark relative overflow-hidden">
+                    <div class="relative z-10">
+                        <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2">모르링고 몽골어 코스 (총 20과)</span>
+                        <h2 class="text-2xl sm:text-3xl font-black" id="mapTitleUser">모르링고 학습 코스</h2>
+                        <p class="text-amber-100 text-xs sm:text-sm mt-1">상위 과를 완수하여 새로운 단어와 문장 레슨을 잠금 해제하세요!</p>
+                    </div>
+                    <i class="fa-solid fa-horse absolute -right-4 -bottom-6 text-9xl opacity-15"></i>
+                </div>
+
+                <!-- Mascot Guide Card (Default Pose - 3rd Image) -->
+                <div class="bg-amber-50/90 border-2 border-amber-200 rounded-3xl p-4 flex items-center gap-4 shadow-2xs">
+                    <div id="mapMascotAvatar" onclick="cycleMascotTip('map')" class="w-20 h-20 sm:w-24 sm:h-24 shrink-0 cursor-pointer hover:scale-105 transition"></div>
+                    <div class="flex-1 bg-white rounded-2xl p-3.5 border-2 border-amber-200/80 relative shadow-2xs">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] font-black text-duo-green uppercase tracking-wider">가이드 모리 (Морь)</span>
+                            <button onclick="cycleMascotTip('map')" class="text-[10px] font-extrabold text-slate-400 hover:text-duo-green">다음 팁 <i class="fa-solid fa-rotate"></i></button>
+                        </div>
+                        <p id="mapMascotSpeech" class="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed">
+                            안녕! 나는 몽골어 친구 모리야. 먼저 <strong>0과 키릴문자</strong>로 글자를 익힌 뒤, <strong>1과부터</strong> 차례대로 눌러 예습과 퀴즈를 시작해봐!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Path Nodes Container -->
+                <div class="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-xs min-h-[550px] flex flex-col items-center justify-center relative overflow-hidden">
+                    <div id="stageMapContainer" class="w-full max-w-md py-6 flex flex-col items-center space-y-9 relative">
+                        <!-- Stage nodes injected dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-cyrillic" class="view-content hidden space-y-6">
+                <div class="bg-gradient-to-r from-duo-blue to-sky-600 rounded-3xl p-6 text-white shadow-duo border-b-4 border-duo-blueDark">
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-black uppercase">0과 필수 학습</span>
+                    <h2 class="text-2xl sm:text-3xl font-black mt-1">몽골어 키릴 문자 (35자)</h2>
+                    <p class="text-sky-100 text-xs sm:text-sm mt-1">몽골어의 자음, 양성/음성/중성 모음, 부호를 직접 누르고 발음을 확인하세요!</p>
+                </div>
+
+                <!-- Vowel Harmony & Rules Banner -->
+                <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 text-xs font-bold text-sky-900 space-y-1.5">
+                    <div><span class="font-black text-duo-blue">• 양성모음:</span> а, о, у</div>
+                    <div><span class="font-black text-duo-purple">• 음성모음:</span> э, ө, ү</div>
+                    <div><span class="font-black text-emerald-600">• 중성모음:</span> и (유는 모음조화에 따라 양성모음 [유], 음성모음 [위]로도 읽힘)</div>
+                    <div><span class="font-black text-slate-700">• 자음(20자):</span> м, н, г, л, б, в, р, ц, ж, з, с, д, т, ш, ч, х, п, ф, к, щ</div>
+                </div>
+
+                <!-- Alphabet Category Filter Buttons -->
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="filterCyrillic('all')" class="cyr-filter-btn px-4 py-2 rounded-xl text-xs font-black bg-duo-blue text-white shadow-xs">전체 (35)</button>
+                    <button onclick="filterCyrillic('male')" class="cyr-filter-btn px-4 py-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-xs">양성모음</button>
+                    <button onclick="filterCyrillic('female')" class="cyr-filter-btn px-4 py-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-xs">음성모음</button>
+                    <button onclick="filterCyrillic('neutral')" class="cyr-filter-btn px-4 py-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-xs">중성모음</button>
+                    <button onclick="filterCyrillic('consonant')" class="cyr-filter-btn px-4 py-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-xs">자음 & 부호</button>
+                </div>
+
+                <div id="cyrillicAlphabetGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </section>
+
+            <section id="view-leaderboard" class="view-content hidden space-y-6">
+                <div class="bg-gradient-to-r from-amber-400 via-duo-yellow to-amber-500 rounded-3xl p-6 text-white shadow-duo border-b-4 border-amber-600">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="bg-black/20 px-3 py-1 rounded-full text-xs font-black uppercase">주간 실시간 경쟁</span>
+                            <h2 class="text-2xl font-black mt-1" id="leagueTitle">브론즈 리그</h2>
+                            <p class="text-amber-100 text-xs mt-1">상위 3명은 <span class="font-black text-white">실버 리그</span>로 승급됩니다!</p>
+                        </div>
+                        <div class="text-center bg-white/20 backdrop-blur-md p-3 rounded-2xl border border-white/30">
+                            <i class="fa-solid fa-clock text-xl"></i>
+                            <div class="text-[10px] uppercase font-extrabold mt-1">마감까지</div>
+                            <div class="text-xs font-black" id="leagueTimer">3일 12시간</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Mascot Guide -->
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-3xl p-4 flex items-center gap-4">
+                    <div id="leaderboardMascotAvatar" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0"></div>
+                    <div class="flex-1 bg-white rounded-2xl p-3 border border-amber-200">
+                        <span class="text-[10px] font-black text-amber-600 uppercase">모리의 리그 안내</span>
+                        <p class="text-xs sm:text-sm font-bold text-slate-700 mt-0.5">
+                            과를 완료할 때마다 <strong>XP</strong>가 쌓여! 주간 순위 <strong>상위 3명</strong> 안에 들면 다음 리그로 승급할 수 있어!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-xs overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b-2 border-slate-200 flex justify-between text-xs font-black text-slate-400 uppercase tracking-wider">
+                        <span>순위 & 학습자</span>
+                        <span>획득 XP</span>
+                    </div>
+
+                    <div id="leaderboardList" class="divide-y divide-slate-100">
+                        <!-- Leaderboard items -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-achievements" class="view-content hidden space-y-6">
+                <!-- Achievements Mascot Guide -->
+                <div class="bg-purple-50/70 border-2 border-purple-200 rounded-3xl p-4 flex items-center gap-4">
+                    <div id="achievementsMascotAvatar" class="w-16 h-16 sm:w-20 sm:h-20 shrink-0"></div>
+                    <div class="flex-1 bg-white rounded-2xl p-3 border border-purple-200">
+                        <span class="text-[10px] font-black text-duo-purple uppercase">모리의 기록실 안내</span>
+                        <p class="text-xs sm:text-sm font-bold text-slate-700 mt-0.5">
+                            매일 접속해서 학습하면 <strong>연속 학습 달력</strong>에 노란 불이 켜지고, 특별한 <strong>업적 배지</strong>가 잠금 해제돼!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Streak Calendar Section -->
+                <div class="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-800 flex items-center">
+                                <i class="fa-solid fa-fire text-amber-500 mr-2"></i> 연속 학습 달력
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">매일 모르링고에서 학습하여 연속 스트릭을 기록하세요!</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-black text-amber-500" id="streakDaysCount">1</span>
+                            <span class="text-xs text-slate-500 block">일 연속</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <button onclick="changeCalendarMonth(-1)" class="p-2 text-slate-500 hover:text-slate-800"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendarMonthLabel" class="font-black text-slate-700 text-sm">2026년 10월</span>
+                            <button onclick="changeCalendarMonth(1)" class="p-2 text-slate-500 hover:text-slate-800"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        
+                        <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 mb-2">
+                            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+                        </div>
+                        <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievements Grid -->
+                <div class="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-xs space-y-4">
+                    <h3 class="text-xl font-black text-slate-800 flex items-center">
+                        <i class="fa-solid fa-medal text-duo-purple mr-2"></i> 달성 과제 및 배지
+                    </h3>
+
+                    <div id="achievementsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t-2 border-slate-200 py-2 px-4 flex justify-around items-center z-30 shadow-lg">
+        <button onclick="switchNavTab('map')" id="mobile-map" class="nav-btn flex flex-col items-center text-duo-green">
+            <i class="fa-solid fa-map text-lg"></i>
+            <span class="text-[10px] font-black mt-0.5">학습 맵</span>
+        </button>
+        <button onclick="switchNavTab('cyrillic')" id="mobile-cyrillic" class="nav-btn flex flex-col items-center text-slate-400">
+            <i class="fa-solid fa-font text-lg"></i>
+            <span class="text-[10px] font-black mt-0.5">0과 키릴자</span>
+        </button>
+        <button onclick="switchNavTab('leaderboard')" id="mobile-leaderboard" class="nav-btn flex flex-col items-center text-slate-400">
+            <i class="fa-solid fa-trophy text-lg"></i>
+            <span class="text-[10px] font-black mt-0.5">리더보드</span>
+        </button>
+        <button onclick="switchNavTab('achievements')" id="mobile-achievements" class="nav-btn flex flex-col items-center text-slate-400">
+            <i class="fa-solid fa-medal text-lg"></i>
+            <span class="text-[10px] font-black mt-0.5">업적</span>
+        </button>
+    </nav>
+
+    <div id="lessonModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-xs z-50 flex flex-col hidden transition-opacity">
+        <div class="bg-white px-4 py-4 border-b-2 border-slate-200 flex items-center justify-between space-x-4 max-w-3xl mx-auto w-full">
+            <button onclick="openExitConfirmModal()" class="text-slate-400 hover:text-slate-600 text-xl font-black">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex-1 bg-slate-200 h-4 rounded-full overflow-hidden border border-slate-300">
+                <div id="lessonProgressBar" class="bg-duo-green h-full w-0 transition-all duration-300"></div>
+            </div>
+            <div class="flex items-center space-x-1 text-duo-red font-black text-sm">
+                <i class="fa-solid fa-heart"></i>
+                <span id="lessonHearts">5</span>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4 py-6 max-w-2xl mx-auto w-full flex flex-col justify-start sm:justify-center">
+            <div id="exerciseCardContainer" class="w-full space-y-6">
+                <!-- Lesson Preview / Exercises Injected Here -->
+            </div>
+        </div>
+
+        <div id="lessonBottomBar" class="bg-white border-t-2 border-slate-200 p-4 transition-all">
+            <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div id="lessonMascotFeedback" class="w-16 h-16 shrink-0 hidden"></div>
+                    <div id="feedbackText" class="text-sm sm:text-base font-black"></div>
+                </div>
+                <button id="checkAnswerBtn" onclick="submitExerciseAnswer()" class="btn-duo-green px-6 sm:px-8 py-3.5 rounded-2xl font-black text-sm sm:text-base shrink-0 transition">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="authModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-xl font-black text-slate-800">모르링고 사용자 계정</h3>
+                <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Login / Sign-up Forms -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-black text-slate-500 uppercase mb-1">학습자 닉네임</label>
+                    <input type="text" id="authNameInput" placeholder="예: 몽골어고수" class="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 focus:outline-none focus:border-duo-green">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black text-slate-500 uppercase mb-1">계정 고유 ID (비워두면 자동지정)</label>
+                    <input type="text" id="authUserIdInput" placeholder="예: user_12345" class="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl px-4 py-3 font-mono font-bold text-slate-800 focus:outline-none focus:border-duo-blue">
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button onclick="handleUserLogin()" class="flex-1 btn-duo-green py-3 rounded-2xl font-black text-sm">
+                        로그인 / 생성
+                    </button>
+                    <button onclick="handleGuestLogin()" class="btn-duo-yellow px-4 py-3 rounded-2xl font-black text-sm">
+                        게스트
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2">
+                <div class="flex justify-between text-slate-600">
+                    <span>현재 유저 ID:</span>
+                    <span id="currentUserIdText" class="font-mono text-slate-800 font-bold truncate max-w-[150px]">Guest</span>
+                </div>
+                <div class="flex justify-between text-slate-600">
+                    <span>누적 XP:</span>
+                    <span id="accountXPText" class="font-black text-sky-600">0 XP</span>
+                </div>
+                <div class="flex justify-between text-slate-600">
+                    <span>완료 과수:</span>
+                    <span id="accountStagesText" class="font-black text-duo-green">0 개</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmExitModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl border-2 border-slate-200">
+            <div class="w-14 h-14 bg-rose-100 text-duo-red rounded-full flex items-center justify-center text-2xl mx-auto">
+                <i class="fa-solid fa-door-open"></i>
+            </div>
+            <h4 class="text-lg font-black text-slate-800">학습을 중단하시겠습니까?</h4>
+            <p class="text-xs font-extrabold text-slate-500">지금 나가시면 이번 레슨에서 얻은 진행상황이 저장되지 않습니다.</p>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeExitConfirmModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-black text-xs">
+                    계속 공부하기
+                </button>
+                <button onclick="exitLessonConfirmed()" class="flex-1 btn-duo-red py-3 rounded-2xl font-black text-xs">
+                    나가기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stageCompleteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border-2 border-slate-200">
+            <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl mx-auto border-4 border-amber-300 animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800">레슨 완료! 🎉</h3>
+            <p id="completeModalMessage" class="text-sm font-extrabold text-slate-600">과정을 훌륭히 마쳤습니다!</p>
+            
+            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex justify-around">
+                <div>
+                    <span class="text-[10px] font-black text-slate-400 block uppercase">획득 XP</span>
+                    <span id="earnedXpText" class="text-xl font-black text-sky-600">+25 XP</span>
+                </div>
+                <div class="border-r border-slate-200"></div>
+                <div>
+                    <span class="text-[10px] font-black text-slate-400 block uppercase">연속 스트릭</span>
+                    <span id="earnedStreakText" class="text-xl font-black text-amber-500">1일</span>
+                </div>
+            </div>
+
+            <button onclick="closeStageCompleteModal()" class="w-full btn-duo-green py-3.5 rounded-2xl font-black text-base">
+                확인 & 다음으로
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Mongolian Curriculum Dataset (10 Lessons + 0과 Cyrillic)
+        const STAGES_DATA = [
+            {
+                id: 0,
+                title: "0과: 키릴문자",
+                desc: "몽골어 키릴 알파벳 35자와 모음조화",
+                icon: "fa-font",
+                color: "bg-duo-blue",
+                isCyrillicTabTrigger: true,
+                vocabList: [],
+                sentenceList: []
+            },
+            {
+                id: 1,
+                title: "1과: 안녕하세요? (기초 몽골어 표현 배우기1)",
+                desc: "인칭 대명사와 기본 인사 표현",
+                icon: "fa-comments",
+                color: "bg-duo-green",
+                vocabList: [
+                    { mn: "монгол", kor: "몽골", pron: "몽골" },
+                    { mn: "би", kor: "나", pron: "비" },
+                    { mn: "та", kor: "당신", pron: "타" },
+                    { mn: "чи", kor: "너", pron: "치" },
+                    { mn: "бид / бид нар", kor: "우리 / 우리들", pron: "비드 / 비드 나르" },
+                    { mn: "та нар", kor: "당신들", pron: "타 나르" },
+                    { mn: "хүн", kor: "사람", pron: "훙" }
+                ],
+                sentenceList: [
+                    { mn: "Сайн байна уу?", kor: "안녕하세요?", pron: "샌배노", targetWord: "байна", options: ["байна", "монгол", "хүн", "би"] },
+                    { mn: "Би монгол хүн.", kor: "나는 몽골사람입니다.", pron: "비 몽골 훙", targetWord: "монгол", options: ["монгол", "та", "чи", "бид"] },
+                    { mn: "Баяртай.", kor: "안녕히가세요.", pron: "바야르테", targetWord: "Баяртай.", options: ["Баяртай.", "Сайн", "Хүн", "Бид"] }
+                ]
+            },
+            {
+                id: 2,
+                title: "2과: 이 사람은 한국 대학생입니다. (기초 몽골어 표현 배우기2)",
+                desc: "지시대명사와 감사/사과 표현",
+                icon: "fa-id-card",
+                color: "bg-duo-purple",
+                vocabList: [
+                    { mn: "энэ", kor: "이것", pron: "인" },
+                    { mn: "тэр", kor: "저것", pron: "테르" },
+                    { mn: "эд / эд нар", kor: "이 사람들", pron: "에드 / 에드 나르" },
+                    { mn: "тэд / тэд нар", kor: "저 사람들", pron: "테드 / 테드 나르" },
+                    { mn: "сургууль", kor: "학교", pron: "소르골" },
+                    { mn: "оюутан", kor: "대학생", pron: "어요틍" },
+                    { mn: "солонгос", kor: "한국", pron: "솔롱고스" }
+                ],
+                sentenceList: [
+                    { mn: "Тэр сургууль.", kor: "저것은 학교입니다.", pron: "테르 소르골", targetWord: "сургууль.", options: ["сургууль.", "оюутан", "солонгос", "энэ"] },
+                    { mn: "Энэ солонгос оюутан.", kor: "나는 한국 대학생입니다.", pron: "인 솔롱고스 어요틍", targetWord: "оюутан.", options: ["оюутан.", "сургууль", "тэр", "эд"] },
+                    { mn: "Баярлалаа.", kor: "감사합니다.", pron: "바야를라", targetWord: "Баярлалаа.", options: ["Баярлалаа.", "Уучлаарай.", "Энэ", "Тэд"] },
+                    { mn: "Уучлаарай.", kor: "죄송합니다.", pron: "오츠라레", targetWord: "Уучлаарай.", options: ["Уучлаарай.", "Баярлалаа.", "Сургууль", "Оюутан"] }
+                ]
+            },
+            {
+                id: 3,
+                title: "3과: 당신은 학생입니까? (의문문 배우기1)",
+                desc: "의문조사 уу/үү/юу/юү 구분 및 의문문 만들기",
+                icon: "fa-circle-question",
+                color: "bg-duo-yellow",
+                vocabList: [
+                    { mn: "уу", kor: "자음이나 단모음으로 끝나는 양성단어 다음", pron: "오" },
+                    { mn: "үү", kor: "자음이나 단모음으로 끝나는 음성단어 다음", pron: "우" },
+                    { mn: "юу", kor: "장모음이나 이중모음으로 끝나는 양성단어 다음", pron: "요" },
+                    { mn: "юү", kor: "장모음이나 이중모음으로 끝나는 음성단어 다음", pron: "유" },
+                    { mn: "Идэх", kor: "먹다", pron: "이데흐" },
+                    { mn: "Өвөө", kor: "할아버지", pron: "어워" }
+                ],
+                sentenceList: [
+                    { mn: "Идэх үү?", kor: "먹을까?", pron: "이데호?", targetWord: "үү?", options: ["үү?", "уу?", "юу?", "юү?"] },
+                    { mn: "Та өвөө юү?", kor: "당신은 할아버지입니까?", pron: "타 어워 요?", targetWord: "юү?", options: ["юү?", "уу?", "үү?", "юу?"] },
+                    { mn: "Эд солонгос хүн үү?", kor: "이 사람들은 한국 사람입니까?", pron: "에드 솔롱고스 후누?", targetWord: "хүн", options: ["хүн", "өвөө", "идэх", "солонгос"] }
+                ]
+            },
+            {
+                id: 4,
+                title: "4과: 네, 저는 학생입니다. (의문문 배우기2)",
+                desc: "긍정과 부정의 대답 및 가족 호칭",
+                icon: "fa-check-double",
+                color: "bg-duo-orange",
+                vocabList: [
+                    { mn: "Тийм", kor: "네", pron: "팀" },
+                    { mn: "Үгүй", kor: "아니요", pron: "우귀" },
+                    { mn: "Мөн", kor: "맞다 / 그렇다", pron: "믕" },
+                    { mn: "Биш", kor: "아니다, 틀리다", pron: "비쉬" },
+                    { mn: "Аав", kor: "아버지", pron: "아아브" },
+                    { mn: "Ээж", kor: "어머니", pron: "에에지" },
+                    { mn: "Явах", kor: "가다", pron: "야와흐" }
+                ],
+                sentenceList: [
+                    { mn: "Чи юү?", kor: "너야?", pron: "치 요?", targetWord: "Чи", options: ["Чи", "Тийм", "Биш", "Аав"] },
+                    { mn: "Тийм, би оюутан.", kor: "네, 저는 대학생입니다.", pron: "팀, 비 어요틍", targetWord: "Тийм,", options: ["Тийм,", "Биш,", "Үгүй,", "Явах"] },
+                    { mn: "Биш, тэр аав.", kor: "틀립니다. 그는 아버지입니다.", pron: "비쉬, 테르 아아브", targetWord: "аав.", options: ["аав.", "ээж", "би", "мөн"] }
+                ]
+            },
+            {
+                id: 5,
+                title: "5과: 당신은 누구입니까? (의문사가 있는 의문문 배우기1)",
+                desc: "의문사(хэн, юу, хаана, хэзээ, ямар)와 의문조사 бэ/вэ",
+                icon: "fa-magnifying-glass",
+                color: "bg-emerald-500",
+                vocabList: [
+                    { mn: "бэ", kor: "의문사 문장에서 '-м, -н, -в' 끝 단어 다음", pron: "베" },
+                    { mn: "вэ", kor: "'-м, -н, -в' 제외 모든 단어 다음", pron: "웨" },
+                    { mn: "хэн", kor: "누구", pron: "헹" },
+                    { mn: "юу", kor: "무엇", pron: "요" },
+                    { mn: "Хаана", kor: "어디", pron: "한" },
+                    { mn: "Хэзээ", kor: "언제", pron: "헤쩨" },
+                    { mn: "ямар", kor: "어떤", pron: "야마르" },
+                    { mn: "ном", kor: "책", pron: "놈" }
+                ],
+                sentenceList: [
+                    { mn: "Ээж Хаана Явах вэ?", kor: "어머니는 어디로 가시나요?", pron: "에에지 한 야와흐 웨?", targetWord: "Хаана", options: ["Хаана", "Хэзээ", "Хэн", "Ямар"] },
+                    { mn: "Та хэн бэ?", kor: "당신은 누구입니까?", pron: "타 헹 웨?", targetWord: "бэ?", options: ["бэ?", "вэ?", "уу?", "үү?"] },
+                    { mn: "Энэ юу вэ?", kor: "이것은 무엇입니까?", pron: "인 요 웨?", targetWord: "юу", options: ["юу", "хэн", "ном", "хаана"] }
+                ]
+            },
+            {
+                id: 6,
+                title: "6과: 이것은 어떤 음식입니까? (의문사가 있는 의문문 배우기 2)",
+                desc: "일상 명사와 의문문 활용",
+                icon: "fa-utensils",
+                color: "bg-sky-500",
+                vocabList: [
+                    { mn: "хоол", kor: "음식", pron: "홀" },
+                    { mn: "хувцас", kor: "옷", pron: "홉차스" },
+                    { mn: "Бороо", kor: "비", pron: "보로" },
+                    { mn: "Өгөх", kor: "주다", pron: "으그흐" },
+                    { mn: "ажил", kor: "일", pron: "아질" },
+                    { mn: "багш", kor: "선생님", pron: "박쉬" }
+                ],
+                sentenceList: [
+                    { mn: "хоол Хэзээ Идэх вэ?", kor: "밥 언제 먹어요?", pron: "홀 헤쩨 이데흐 웨?", targetWord: "Хэзээ", options: ["Хэзээ", "Хаана", "Ямар", "Өгөх"] },
+                    { mn: "Та ямар багш вэ?", kor: "당신은 어떤 선생님인가요?", pron: "타 야마르 박쉬 웨?", targetWord: "багш", options: ["багш", "хоол", "ажил", "хувцас"] },
+                    { mn: "бороо орох уу?", kor: "비가 내리나요?", pron: "보로 오로호?", targetWord: "бороо", options: ["бороо", "хоол", "ажил", "багш"] }
+                ]
+            },
+            {
+                id: 7,
+                title: "7과: 나는 몽골학과 학생이다. (소유격 1)",
+                desc: "소유격 어미 (-ын, -ийн, -ы, -ий) 연결 규칙",
+                icon: "fa-book",
+                color: "bg-indigo-500",
+                vocabList: [
+                    { mn: "-ын / -ийн", kor: "н 이외 자음 끝(양성/음성) 또는 단모음 탈락 후 연결", pron: "읭 / 잉" },
+                    { mn: "-ы / -ий", kor: "н 끝 또는 숨은н을 가진 단어(양성/음성) 뒤 연결", pron: "의 / 이" },
+                    { mn: "ахын", kor: "형의", pron: "아힁" },
+                    { mn: "ханын (хана+ын)", kor: "벽의", pron: "하닁" },
+                    { mn: "эгчийн", kor: "언니의", pron: "엑칭" },
+                    { mn: "үнийн (үнэ+ийн)", kor: "가격의", pron: "우닝" },
+                    { mn: "зуны (зун+ы)", kor: "여름의", pron: "조닁" },
+                    { mn: "хоолны (хоол(н)+ы)", kor: "음식의", pron: "헐늬" },
+                    { mn: "хүний (хүн+ий)", kor: "사람의", pron: "후니" },
+                    { mn: "хэлний (хэл(н)+ий)", kor: "말의", pron: "헬니" }
+                ],
+                sentenceList: [
+                    { mn: "Энэ ахын ном.", kor: "이것은 형의 책이다.", pron: "인 아힁 놈", targetWord: "ахын", options: ["ахын", "эгчийн", "зуны", "хүний"] },
+                    { mn: "тэр эгчийн хувцас.", kor: "그것은 언니의 옷이다.", pron: "테르 억칭 홉차스", targetWord: "эгчийн", options: ["эгчийн", "ахын", "үнийн", "ханын"] },
+                    { mn: "Би монгол хэлний ангийн оюутан.", kor: "나는 몽골학과 학생이다.", pron: "비 몽골 헬니 앙깅 어요틍", targetWord: "хэлний", options: ["хэлний", "хоолны", "хүний", "зуны"] }
+                ]
+            },
+            {
+                id: 8,
+                title: "8과: 이것은 나의 건물이다. (소유격 2)",
+                desc: "소유격 어미 (-гийн, -н) 및 인칭/지시대명사 소유격",
+                icon: "fa-building",
+                color: "bg-pink-500",
+                vocabList: [
+                    { mn: "-гийн / -н", kor: "장모음·받침н 뒤(-гийн), 이중모음 뒤(-н)", pron: "깅 / -ㄴ" },
+                    { mn: "дүүгийн / байшингийн / ойн", kor: "동생의 / 건물의 / 숲의", pron: "두깅 / 배싱깅 / 오잉" },
+                    { mn: "миний / чиний / таны", kor: "나의 / 너의 / 당신의", pron: "미니 / 치니 / 타늬" },
+                    { mn: "бидний / бид нарын / манай", kor: "우리의", pron: "비드니 / 비드 나릥 / 마내" },
+                    { mn: "та нарын / танай", kor: "당신들의", pron: "타 나릥 / 타내" },
+                    { mn: "энэний (үүний) / тэрний (түүний)", kor: "이것의 / 그것의, 저것의", pron: "인니(우니) / 테르니(투니)" },
+                    { mn: "эдний (эд нарын) / тэдний (тэд нарын)", kor: "이들의 / 그들의", pron: "이드니(이드 나링) / 테드니(테드 나링)" }
+                ],
+                sentenceList: [
+                    { mn: "Тэр дүүгийн ажил.", kor: "그것은 동생의 일이다.", pron: "테르 두깅 아질", targetWord: "дүүгийн", options: ["дүүгийн", "байшингийн", "миний", "ойн"] },
+                    { mn: "Энэ хэний хоол вэ?", kor: "이것은 누구의 음식입니까?", pron: "인 헤니 홀 웨?", targetWord: "хэний", options: ["хэний", "миний", "чиний", "таны"] },
+                    { mn: "энэ миний байшин.", kor: "이것은 내 건물입니다.", pron: "인 미니 배싱", targetWord: "миний", options: ["миний", "чиний", "таны", "манай"] }
+                ]
+            },
+            {
+                id: 9,
+                title: "9과: 오늘 비가 올 것이다. (미래형 1)",
+                desc: "미래시제 어미 (-на/-но/-нө/-нэ) 활용",
+                icon: "fa-cloud-rain",
+                color: "bg-rose-500",
+                vocabList: [
+                    { mn: "-на / -но / -нө / -нэ", kor: "동사의 행위가 미래에 일어남을 나타냄", pron: "나 / 노 / 너 / 네" },
+                    { mn: "авна", kor: "가질 것이다", pron: "아운" },
+                    { mn: "орно", kor: "들어갈 것이다", pron: "오른" },
+                    { mn: "өгнө", kor: "줄 것이다", pron: "으근" },
+                    { mn: "иднэ", kor: "먹을 것이다", pron: "읻든" },
+                    { mn: "байна", kor: "있다", pron: "밴" }
+                ],
+                sentenceList: [
+                    { mn: "өнөөдөр бороо орно.", kor: "오늘 비가 올 것이다.", pron: "으느드르 보로 오른", targetWord: "орно.", options: ["орно.", "авна", "өгнө", "иднэ"] },
+                    { mn: "хамт явах уу?", kor: "같이 갈래?", pron: "함트 야와호?", targetWord: "явах", options: ["явах", "идэх", "өгөх", "орох"] },
+                    { mn: "дүү байна уу?", kor: "동생 있나요?", pron: "두 배노?", targetWord: "байна", options: ["байна", "орно", "авна", "иднэ"] }
+                ]
+            },
+            {
+                id: 10,
+                title: "10과: 학교에 가지 않을 것이다 (미래형 2)",
+                desc: "부정 미래형(-хгүй) 및 사물 표현",
+                icon: "fa-ban",
+                color: "bg-teal-600",
+                vocabList: [
+                    { mn: "явахгүй", kor: "가지 않을 것이다", pron: "야와흐귀" },
+                    { mn: "орохгүй", kor: "들어오지 않을 것이다", pron: "오로흐귀" },
+                    { mn: "өгөхгүй", kor: "주지 않을 것이다", pron: "으그흐귀" },
+                    { mn: "үзэхгүй", kor: "보지 않을 것이다", pron: "우제흐귀" },
+                    { mn: "Цүнх", kor: "가방", pron: "충흐" },
+                    { mn: "өнгө", kor: "색", pron: "응그" },
+                    { mn: "Нохой", kor: "개", pron: "노호이" }
+                ],
+                sentenceList: [
+                    { mn: "сургуульд явахгүй.", kor: "학교에 가지 않을 것이다.", pron: "소르골드 야와흐귀", targetWord: "явахгүй.", options: ["явахгүй.", "орохгүй", "өгөхгүй", "үзэхгүй"] },
+                    { mn: "би чиний Цүнх өгөхгүй", kor: "나는 너의 가방을 주지 않을 것이다.", pron: "비 치니 충흐 으그흐귀", targetWord: "өгөхгүй", options: ["өгөхгүй", "явахгүй", "орохгүй", "үзэхгүй"] },
+                    { mn: "Үзэг байхгүй.", kor: "펜 없어요.", pron: "우젝 배흐귀", targetWord: "байхгүй.", options: ["байхгүй.", "явахгүй", "цүнх", "өнгө"] }
+                ]
+            },
+            {
+                id: 11,
+                title: "11과: 그 책을 저에게 주세요 (여처격이 있는 문장)",
+                desc: "위치 명사와 여처격 활용",
+                icon: "fa-hand-holding",
+                color: "bg-amber-600",
+                vocabList: [
+                    { mn: "харандаа", kor: "연필", pron: "하란다" },
+                    { mn: "ширээ", kor: "책상", pron: "시레" },
+                    { mn: "цаас", kor: "종이", pron: "차스" },
+                    { mn: "дээр", kor: "위에", pron: "데뜨" },
+                    { mn: "доор", kor: "아래에", pron: "더어르" }
+                ],
+                sentenceList: [
+                    { mn: "Тэр ном надад өгөөрэй.", kor: "그 책을 저에게 주세요.", pron: "테르 넘 나따드 으구래", targetWord: "надад", options: ["надад", "ширээн", "дээр", "доор"] },
+                    { mn: "Ширээн дээр харандаа байгаа.", kor: "책상 위에 연필이 있어요.", pron: "시렝 데르 하란다 배가", targetWord: "дээр", options: ["дээр", "доор", "цаас", "надад"] },
+                    { mn: "Ширээн доор цаас байгаа.", kor: "책상 아래에 종이가 있어요.", pron: "시렝 더르 차아스 배가", targetWord: "доор", options: ["доор", "дээр", "харандаа", "ном"] }
+                ]
+            },
+            {
+                id: 12,
+                title: "12과: 저는 당근을 싫어합니다 (여처격을 필요로 하는 동사)",
+                desc: "호불호 표현(дуртай/дургүй)과 여처격",
+                icon: "fa-heart-crack",
+                color: "bg-orange-600",
+                vocabList: [
+                    { mn: "дуртай", kor: "좋아하다", pron: "도르테" },
+                    { mn: "дургүй", kor: "싫어하다", pron: "도르귀" },
+                    { mn: "лууван", kor: "당근", pron: "로오왕" },
+                    { mn: "бялуу", kor: "케이크", pron: "뱔로" },
+                    { mn: "хамгийн", kor: "가장", pron: "함기잉" }
+                ],
+                sentenceList: [
+                    { mn: "Би бялууд дуртай.", kor: "저는 케이크를 좋아합니다.", pron: "비 뱔로뜨 도르테", targetWord: "дуртай.", options: ["дуртай.", "дургүй", "хамгийн", "лууван"] },
+                    { mn: "Би лууванд дургүй.", kor: "저는 당근을 싫어합니다.", pron: "비 로오왕뜨 도르귀", targetWord: "дургүй.", options: ["дургүй.", "дуртай.", "бялууд", "юунд"] },
+                    { mn: "Юунд хамгийн дуртай вэ?", kor: "무엇을 가장 좋아합니까?", pron: "욘뜨 함기잉 도르테 웨?", targetWord: "хамгийн", options: ["хамгийн", "лууванд", "бялууд", "дургүй"] }
+                ]
+            },
+            {
+                id: 13,
+                title: "13과: 누구와 함께 있나요? (공동격이 있는 문장)",
+                desc: "공동격 어미(-тай/-тэй/-той)와 동행 표현",
+                icon: "fa-user-group",
+                color: "bg-lime-600",
+                vocabList: [
+                    { mn: "дүү", kor: "동생", pron: "두" },
+                    { mn: "найз", kor: "친구", pron: "네에즈" },
+                    { mn: "ганцаараа", kor: "혼자서", pron: "간차라아" },
+                    { mn: "уулзах", kor: "만나다", pron: "오올자흐" },
+                    { mn: "анги", kor: "반", pron: "앵긔" }
+                ],
+                sentenceList: [
+                    { mn: "Дүүтэй хамт байна.", kor: "동생과 함께 있어요.", pron: "두테 함트 밴", targetWord: "хамт", options: ["хамт", "ганцаараа", "уулзна", "анги"] },
+                    { mn: "Ганцаараа байгаа.", kor: "혼자 있어요.", pron: "간차라아 배가", targetWord: "Ганцаараа", options: ["Ганцаараа", "Дүүтэй", "Найзтай", "Хамт"] },
+                    { mn: "Найзтай уулзна.", kor: "친구와 만날 거예요.", pron: "네즈테 오올즌", targetWord: "Найзтай", options: ["Найзтай", "Дүүтэй", "Ганцаараа", "Анги"] }
+                ]
+            },
+            {
+                id: 14,
+                title: "14과: 무엇을 가지고 있습니까? (공동격이 있는 문장 2)",
+                desc: "소유·상태를 나타내는 공동격 활용",
+                icon: "fa-credit-card",
+                color: "bg-cyan-600",
+                vocabList: [
+                    { mn: "карт", kor: "카드", pron: "카르트" },
+                    { mn: "ухаантай", kor: "똑똑하다", pron: "오항테" },
+                    { mn: "завтай", kor: "시간이 있는", pron: "자읍테" },
+                    { mn: "хичээлтэй", kor: "수업이 있다", pron: "히첼테" },
+                    { mn: "давстай ус", kor: "소금물", pron: "답스테 오스" }
+                ],
+                sentenceList: [
+                    { mn: "Танд карт байгаа юу?", kor: "당신에게 카드가 있습니까?", pron: "탄드 카르트 배가 요", targetWord: "карт", options: ["карт", "завтай", "хичээлтэй", "ухаантай"] },
+                    { mn: "Та хичээлтэй юу?", kor: "당신은 수업이 있나요?", pron: "타 히첼테 요", targetWord: "хичээлтэй", options: ["хичээлтэй", "завтай", "ухаантай", "карт"] },
+                    { mn: "Та завтай юу?", kor: "당신, 시간 있습니까?", pron: "타 자읍테 요", targetWord: "завтай", options: ["завтай", "хичээлтэй", "ухаантай", "карт"] }
+                ]
+            },
+            {
+                id: 15,
+                title: "15과: 당신은 몇 살입니까? (수사가 들어간 의문문 1)",
+                desc: "나이 묻고 답하기 표현",
+                icon: "fa-cake-candles",
+                color: "bg-fuchsia-600",
+                vocabList: [
+                    { mn: "нас", kor: "나이", pron: "나스" },
+                    { mn: "хэдэн", kor: "몇", pron: "헤뜽" },
+                    { mn: "хорин настай", kor: "20살", pron: "허린 나스테" },
+                    { mn: "өндөр настай", kor: "나이가 많은", pron: "은두르 나스테" },
+                    { mn: "бага настай", kor: "나이가 어린", pron: "박 나스테" }
+                ],
+                sentenceList: [
+                    { mn: "Та хэдэн настай вэ?", kor: "당신은 몇 살입니까?", pron: "타 헤뜽 나스테 웨", targetWord: "хэдэн", options: ["хэдэн", "хорин", "өндөр", "бага"] },
+                    { mn: "Би хорин настай.", kor: "저는 20살입니다.", pron: "비 허린 나스테", targetWord: "хорин", options: ["хорин", "хэдэн", "өндөр", "бага"] },
+                    { mn: "Тэр бага настай.", kor: "그는 나이가 어립니다.", pron: "테르 박 나스테", targetWord: "бага", options: ["бага", "өндөр", "хорин", "хэдэн"] }
+                ]
+            },
+            {
+                id: 16,
+                title: "16과: 이것은 얼마입니까? (수사가 들어간 의문문 2)",
+                desc: "가격 묻기 및 물건 구매·판매 어휘",
+                icon: "fa-tags",
+                color: "bg-violet-600",
+                vocabList: [
+                    { mn: "хэд", kor: "몇 / 얼마", pron: "헤뜨" },
+                    { mn: "үнэтэй", kor: "비싼", pron: "운테" },
+                    { mn: "үнэгүй", kor: "무료인 / 공짜인", pron: "우네구이" },
+                    { mn: "авах", kor: "사다", pron: "아왁흐" },
+                    { mn: "зарах", kor: "판매하다", pron: "자락흐" }
+                ],
+                sentenceList: [
+                    { mn: "Энэ хэд вэ?", kor: "이건 얼마예요?", pron: "인 히뜨 웨", targetWord: "хэд", options: ["хэд", "үнэтэй", "үнэгүй", "авах"] },
+                    { mn: "Энэ Үнэтэй юу?", kor: "이건 비싼가요?", pron: "인 운테 요?", targetWord: "Үнэтэй", options: ["Үнэтэй", "үнэгүй", "хэд", "зарах"] },
+                    { mn: "Энэ үнэгүй юу?", kor: "이건 무료인가요?", pron: "인 운구위", targetWord: "үнэгүй", options: ["үнэгүй", "Үнэтэй", "хэд", "авах"] }
+                ]
+            },
+            {
+                id: 17,
+                title: "17과: 오늘은 무슨 요일입니까? (고유명사로 된 요일)",
+                desc: "오늘·내일 및 고유명사 요일 표현",
+                icon: "fa-calendar-day",
+                color: "bg-blue-600",
+                vocabList: [
+                    { mn: "өнөөдөр", kor: "오늘", pron: "으누뚜르" },
+                    { mn: "маргааш", kor: "내일", pron: "마르가쉬" },
+                    { mn: "гараг", kor: "요일", pron: "가륵" },
+                    { mn: "Бямба гараг", kor: "토요일", pron: "뱜브 가륵" },
+                    { mn: "Ням гараг", kor: "일요일", pron: "냠 가륵" }
+                ],
+                sentenceList: [
+                    { mn: "Өнөөдөр ямар гараг вэ?", kor: "오늘 무슨 요일인가요?", pron: "으누뚜르 야머르 가륵 웨", targetWord: "гараг", options: ["гараг", "Бямба", "Ням", "маргааш"] },
+                    { mn: "Өнөөдөр Бямба гараг.", kor: "오늘은 토요일입니다.", pron: "으누뚜르 뱜브 가륵", targetWord: "Бямба", options: ["Бямба", "Ням", "ямар", "маргааш"] },
+                    { mn: "Маргааш ямар гараг вэ?", kor: "내일은 무슨 요일인가요?", pron: "마르가쉬 야머르 가륵 웨", targetWord: "Маргааш", options: ["Маргааш", "Өнөөдөр", "Бямба", "Ням"] }
+                ]
+            },
+            {
+                id: 18,
+                title: "18과: 오늘은 몇 요일입니까? (서수사로 된 요일)",
+                desc: "서수사를 활용한 월~금요일 표현",
+                icon: "fa-calendar-week",
+                color: "bg-emerald-600",
+                vocabList: [
+                    { mn: "нэг дэх өдөр", kor: "월요일", pron: "닉 덱흐 으뚜루" },
+                    { mn: "хоёр дахь өдөр", kor: "화요일", pron: "허여르 덱흐 으뚜루" },
+                    { mn: "гурав дахь өдөр", kor: "수요일", pron: "고릅 덱흐 으뚜루" },
+                    { mn: "дөрөв дэх өдөр", kor: "목요일", pron: "드룹 덱흐 으뚜루" },
+                    { mn: "тав дахь өдөр", kor: "금요일", pron: "타읍 덱흐 으뚜루" }
+                ],
+                sentenceList: [
+                    { mn: "Өнөөдөр нь нэг дэх өдөр.", kor: "오늘은 월요일입니다.", pron: "으누뚜른 닉 덱흐 으뚜루", targetWord: "нэг", options: ["нэг", "хоёр", "гурав", "дөрөв"] },
+                    { mn: "Өчигдөр бол хоёр дахь өдөр байсан уу?", kor: "어제는 화요일이었습니까?", pron: "으칙두르 벌 허여르 덱흐 으뚜루 배스누", targetWord: "хоёр", options: ["хоёр", "нэг", "гурав", "тав"] },
+                    { mn: "Маргааш гурав дахь өдөр үү?", kor: "내일은 수요일입니까?", pron: "마르가쉬 고릅 덱흐 으뚜르우", targetWord: "гурав", options: ["гурав", "нэг", "хоёр", "тав"] }
+                ]
+            },
+            {
+                id: 19,
+                title: "19과: 회사에 갑니다 (현재반복시제 1)",
+                desc: "일상적인 반복 동작(-даг/-дэг/-дог/-дөг)",
+                icon: "fa-briefcase",
+                color: "bg-slate-700",
+                vocabList: [
+                    { mn: "явдаг", kor: "가다 (반복)", pron: "야읍득" },
+                    { mn: "компани", kor: "회사", pron: "캄파니" },
+                    { mn: "ажилладаг", kor: "일하다 (반복)", pron: "아질득" },
+                    { mn: "ажилтан", kor: "직원", pron: "아질틍" },
+                    { mn: "амрах", kor: "쉬다", pron: "아므락흐" }
+                ],
+                sentenceList: [
+                    { mn: "Компанид ажилладаг.", kor: "회사에서 일을 합니다.", pron: "컴판드 아찔뜩", targetWord: "ажилладаг.", options: ["ажилладаг.", "амрадаг.", "явдаг.", "ажилтан"] },
+                    { mn: "Гэртээ амрадаг.", kor: "집에서 쉽니다.", pron: "게르테 아마르득", targetWord: "амрадаг.", options: ["амрадаг.", "ажилладаг.", "явдаг.", "компанид"] },
+                    { mn: "Нутаг руу явдаг.", kor: "고향에 다닙니다.", pron: "노탁(으)로 야읍득", targetWord: "явдаг.", options: ["явдаг.", "ажилладаг.", "амрадаг.", "ажилтан"] }
+                ]
+            },
+            {
+                id: 20,
+                title: "20과: 혼자 살고 있습니다 (현재반복시제 2)",
+                desc: "거주지와 생활 관련 현재반복시제 활용",
+                icon: "fa-house-chimney",
+                color: "bg-rose-600",
+                vocabList: [
+                    { mn: "амьдардаг", kor: "살다 (반복)", pron: "앰드르득" },
+                    { mn: "дотуур байр", kor: "기숙사", pron: "더토르 배애르" },
+                    { mn: "газар", kor: "장소", pron: "가자르" },
+                    { mn: "амьдрал", kor: "삶", pron: "앰드랄" },
+                    { mn: "гэр", kor: "집", pron: "게르" }
+                ],
+                sentenceList: [
+                    { mn: "Ганцаараа амьдардаг.", kor: "혼자 삽니다.", pron: "간차라아 앰드르득", targetWord: "Ганцаараа", options: ["Ганцаараа", "Хаана", "Газар", "Гэр"] },
+                    { mn: "Дотуур байранд амьдардаг.", kor: "기숙사에 삽니다.", pron: "더토르 배애른뜨 앰드르득", targetWord: "байранд", options: ["байранд", "газар", "амьдрал", "гэр"] },
+                    { mn: "Хаана амьдардаг вэ?", kor: "어디에서 삽니까?", pron: "하안 앰드르득 웨", targetWord: "Хаана", options: ["Хаана", "Ганцаараа", "Газар", "Гэр"] }
+                ]
+            }
+        ];
+
+        // 35 Cyrillic letters database matching user specification
+        const CYRILLIC_LETTERS = [
+            { char: 'А а', kor: '아', type: 'male', desc: '양성모음' },
+            { char: 'Б б', kor: '베', type: 'consonant', desc: '자음' },
+            { char: 'В в', kor: '웨', type: 'consonant', desc: '자음' },
+            { char: 'Г г', kor: '게', type: 'consonant', desc: '자음' },
+            { char: 'Д д', kor: '데', type: 'consonant', desc: '자음' },
+            { char: 'Е е', kor: '예', type: 'consonant', desc: '예 발음' },
+            { char: 'Ё ё', kor: '여', type: 'consonant', desc: '여 발음' },
+            { char: 'Ж ж', kor: '제', type: 'consonant', desc: '자음' },
+            { char: 'З з', kor: '제', type: 'consonant', desc: '자음' },
+            { char: 'И и', kor: '이', type: 'neutral', desc: '중성모음' },
+            { char: 'Й й', kor: '하가스 이', type: 'neutral', desc: '반모음' },
+            { char: 'К к', kor: '카', type: 'consonant', desc: '자음' },
+            { char: 'Л л', kor: '엘', type: 'consonant', desc: '자음' },
+            { char: 'М м', kor: '엠', type: 'consonant', desc: '자음' },
+            { char: 'Н н', kor: '엔', type: 'consonant', desc: '자음' },
+            { char: 'О о', kor: '어', type: 'male', desc: '양성모음' },
+            { char: 'Ө ө', kor: '으', type: 'female', desc: '음성모음' },
+            { char: 'П п', kor: '페', type: 'consonant', desc: '자음' },
+            { char: 'Р р', kor: '에르', type: 'consonant', desc: '자음' },
+            { char: 'С с', kor: '에스', type: 'consonant', desc: '자음' },
+            { char: 'Т т', kor: '테', type: 'consonant', desc: '자음' },
+            { char: 'У у', kor: '오', type: 'male', desc: '양성모음' },
+            { char: 'Ү ү', kor: '우', type: 'female', desc: '음성모음' },
+            { char: 'Ф ф', kor: '에프', type: 'consonant', desc: '자음' },
+            { char: 'Х х', kor: '하', type: 'consonant', desc: '자음' },
+            { char: 'Ц ц', kor: '체', type: 'consonant', desc: '자음' },
+            { char: 'Ч ч', kor: '체', type: 'consonant', desc: '자음' },
+            { char: 'Ш ш', kor: '샤', type: 'consonant', desc: '자음' },
+            { char: 'Щ щ', kor: '시챠', type: 'consonant', desc: '자음' },
+            { char: 'Ъ ъ', kor: 'хатуугийн тэмдэг (하토깅 템득)', type: 'consonant', desc: '경음부호' },
+            { char: 'Ы ы', kor: '이', type: 'consonant', desc: '장모음 이' },
+            { char: 'Ь ь', kor: 'зөөлнийн тэмдэг (절닝 템득)', type: 'consonant', desc: '연음부호' },
+            { char: 'Э э', kor: '에', type: 'female', desc: '음성모음' },
+            { char: 'Ю ю', kor: '요, 유 / 위', type: 'consonant', desc: '모음조화 따라 [유]/[위]' },
+            { char: 'Я я', kor: '야', type: 'consonant', desc: '야 발음' }
+        ];
+
+        // Global Application State
+        let userState = {
+            userId: 'guest_user',
+            userName: '학습자',
+            xp: 0,
+            streak: 1,
+            completedStages: [],
+            activeDates: [new Date().toISOString().split('T')[0]],
+            league: '브론즈'
+        };
+
+        let calendarDate = new Date();
+        let currentStage = null;
+        let lessonQueue = [];
+        let currentStepIdx = 0;
+        let hearts = 5;
+        let selectedOption = null;
+        let orderedWords = [];
+        let isAnswered = false;
+        let currentFilter = 'all';
+
+        // Audio Chime Synthesizer (Web Audio API)
+        function playChime(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'success') {
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, ctx.currentTime);
+                    osc.frequency.setValueAtTime(160, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.35);
+                } else {
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.12);
+                }
+            } catch (e) {}
+        }
+
+        // Mascot SVG Renderer (default: 3rd img, happy: 2nd img, sad: 1st img)
+        function getMascotSVG(mood = 'default') {
+            const scarf = `
+                <path d="M56 54 Q68 64 85 57 L87 65 Q68 73 54 62 Z" fill="#00b4e5"/>
+                <rect x="74" y="61" width="9" height="16" rx="2" fill="#00b4e5"/>
+                <path d="M75 69 L78.5 72 L82 69 M75 73 L82 73" stroke="#006d8f" stroke-width="1.2" fill="none"/>
+            `;
+
+            if (mood === 'happy') {
+                // 2nd Photo: Joyful jumping pony with raised front leg and open smiling mouth
+                return `
+                <svg viewBox="0 0 110 105" class="w-full h-full drop-shadow-sm">
+                    <!-- Tail -->
+                    <path d="M28 52 C14 48 10 68 6 78 C12 77 15 74 17 70 C15 76 13 82 11 86 C18 83 22 76 24 70 C24 76 23 81 22 85 C28 79 31 68 30 57 Z" fill="#4a3222"/>
+                    <!-- Back Legs (jumping) -->
+                    <path d="M27 68 L20 88 L27 91 L35 72 Z" fill="#9c663b"/>
+                    <path d="M20 88 L18 93 Q22 96 26 94 L27 91 Z" fill="#4a3222"/>
+                    <path d="M39 70 L34 91 L42 93 L47 72 Z" fill="#b57949"/>
+                    <path d="M34 91 L33 96 Q37 99 41 97 L42 93 Z" fill="#4a3222"/>
+                    <!-- Body -->
+                    <ellipse cx="47" cy="62" rx="21" ry="14" transform="rotate(-12 47 62)" fill="#b57949"/>
+                    <!-- Raised Front Right Leg -->
+                    <path d="M68 54 L92 38 L97 45 L73 63 Z" fill="#b57949"/>
+                    <path d="M92 38 L97 35 Q102 39 99 44 L97 45 Z" fill="#4a3222"/>
+                    <!-- Bent Front Left Leg -->
+                    <path d="M60 66 L70 76 L64 84 L54 72 Z" fill="#9c663b"/>
+                    <path d="M64 84 L61 88 Q65 92 69 89 L70 85 Z" fill="#4a3222"/>
+                    <!-- Neck & Mane -->
+                    <path d="M51 35 C45 42 45 52 48 58 L54 56 C52 49 53 42 56 36 Z" fill="#4a3222"/>
+                    <path d="M54 32 L76 34 L73 62 L51 58 Z" fill="#b57949"/>
+                    <!-- Ears & Head -->
+                    <ellipse cx="59" cy="18" rx="4" ry="7" transform="rotate(-15 59 18)" fill="#b57949"/>
+                    <ellipse cx="78" cy="17" rx="4" ry="7" transform="rotate(15 78 17)" fill="#b57949"/>
+                    <rect x="55" y="16" width="32" height="30" rx="14" fill="#b57949"/>
+                    <!-- Forelock Hair -->
+                    <path d="M57 18 C62 8 78 7 86 16 C81 17 78 16 76 15 C80 18 85 20 89 20 C82 24 74 22 69 19 C71 22 73 24 76 25 C68 25 61 22 57 18 Z" fill="#4a3222"/>
+                    <!-- Muzzle -->
+                    <rect x="74" y="29" width="21" height="17" rx="8.5" fill="#f3dfc8"/>
+                    <circle cx="81" cy="34" r="1.4" fill="#a88463"/>
+                    <circle cx="89" cy="34" r="1.4" fill="#a88463"/>
+                    <!-- Happy Arched Eyes -->
+                    <path d="M65 26 Q68 21 71 26" stroke="#3b2618" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+                    <path d="M78 26 Q81 21 84 26" stroke="#3b2618" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+                    <!-- Open Laughing Mouth -->
+                    <path d="M78 38 Q84 46 90 38 Z" fill="#4a2518"/>
+                    <path d="M80 41 Q84 44 88 41 Q84 39 80 41 Z" fill="#e57373"/>
+                    ${scarf}
+                </svg>`;
+            }
+
+            if (mood === 'sad') {
+                // 1st Photo: Sad crying pony with teardrop and downturned mouth
+                return `
+                <svg viewBox="0 0 110 105" class="w-full h-full drop-shadow-sm">
+                    <!-- Tail -->
+                    <path d="M28 50 C14 48 10 68 6 80 C12 79 15 75 17 70 C15 77 13 83 11 88 C18 85 22 78 24 71 C24 77 23 83 22 87 C28 81 31 69 30 57 Z" fill="#4a3222"/>
+                    <!-- Four Standing Legs -->
+                    <rect x="26" y="65" width="9" height="28" rx="3" fill="#9c663b"/>
+                    <path d="M26 89 L35 89 L36 94 Q30 96 25 94 Z" fill="#4a3222"/>
+                    <rect x="38" y="67" width="9" height="28" rx="3" fill="#b57949"/>
+                    <path d="M38 91 L47 91 L48 96 Q42 98 37 96 Z" fill="#4a3222"/>
+                    <rect x="57" y="67" width="9" height="28" rx="3" fill="#9c663b"/>
+                    <path d="M57 91 L66 91 L67 96 Q61 98 56 96 Z" fill="#4a3222"/>
+                    <rect x="69" y="65" width="9" height="28" rx="3" fill="#b57949"/>
+                    <path d="M69 89 L78 89 L79 94 Q73 96 68 94 Z" fill="#4a3222"/>
+                    <!-- Body -->
+                    <rect x="26" y="48" width="52" height="26" rx="13" fill="#b57949"/>
+                    <!-- Neck & Mane -->
+                    <path d="M52 28 C46 36 46 48 49 55 L55 53 C53 46 54 37 57 30 Z" fill="#4a3222"/>
+                    <path d="M54 27 L77 30 L76 58 L52 55 Z" fill="#b57949"/>
+                    <!-- Drooping Ears & Head -->
+                    <ellipse cx="56" cy="21" rx="7" ry="4" transform="rotate(-25 56 21)" fill="#b57949"/>
+                    <ellipse cx="83" cy="22" rx="6" ry="3.5" transform="rotate(20 83 22)" fill="#b57949"/>
+                    <rect x="57" y="15" width="33" height="31" rx="14" fill="#b57949"/>
+                    <!-- Forelock Hair -->
+                    <path d="M60 17 C65 7 81 7 89 16 C84 17 81 16 79 15 C83 18 88 20 92 20 C85 24 77 22 72 19 C74 22 76 24 79 25 C71 25 64 21 60 17 Z" fill="#4a3222"/>
+                    <!-- Muzzle -->
+                    <rect x="76" y="30" width="21" height="17" rx="8.5" fill="#f3dfc8"/>
+                    <circle cx="83" cy="35" r="1.4" fill="#a88463"/>
+                    <circle cx="91" cy="35" r="1.4" fill="#a88463"/>
+                    <!-- Sad Eyebrows & Eyes -->
+                    <path d="M65 24 L72 22" stroke="#3b2618" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M80 22 L87 24" stroke="#3b2618" stroke-width="2" stroke-linecap="round"/>
+                    <ellipse cx="69" cy="27" rx="2.3" ry="3" fill="#3b2618"/>
+                    <ellipse cx="83" cy="27" rx="2.3" ry="3" fill="#3b2618"/>
+                    <!-- Teardrop -->
+                    <path d="M67 31 C67 31 63 36 63 38.5 A4 4 0 0 0 71 38.5 C71 36 67 31 67 31 Z" fill="#29b6f6"/>
+                    <!-- Sad Frown Mouth -->
+                    <path d="M80 42 Q86 38 92 42" stroke="#3b2618" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                    ${scarf}
+                </svg>`;
+            }
+
+            // 3rd Photo: Default friendly standing pony with gentle smile
+            return `
+            <svg viewBox="0 0 110 105" class="w-full h-full drop-shadow-sm">
+                <!-- Tail -->
+                <path d="M28 50 C14 48 10 68 6 80 C12 79 15 75 17 70 C15 77 13 83 11 88 C18 85 22 78 24 71 C24 77 23 83 22 87 C28 81 31 69 30 57 Z" fill="#4a3222"/>
+                <!-- Four Standing Legs -->
+                <rect x="26" y="65" width="9" height="28" rx="3" fill="#9c663b"/>
+                <path d="M26 89 L35 89 L36 94 Q30 96 25 94 Z" fill="#4a3222"/>
+                <rect x="38" y="67" width="9" height="28" rx="3" fill="#b57949"/>
+                <path d="M38 91 L47 91 L48 96 Q42 98 37 96 Z" fill="#4a3222"/>
+                <rect x="57" y="67" width="9" height="28" rx="3" fill="#9c663b"/>
+                <path d="M57 91 L66 91 L67 96 Q61 98 56 96 Z" fill="#4a3222"/>
+                <rect x="69" y="65" width="9" height="28" rx="3" fill="#b57949"/>
+                <path d="M69 89 L78 89 L79 94 Q73 96 68 94 Z" fill="#4a3222"/>
+                <!-- Body -->
+                <rect x="26" y="48" width="52" height="26" rx="13" fill="#b57949"/>
+                <!-- Neck & Mane -->
+                <path d="M52 28 C46 36 46 48 49 55 L55 53 C53 46 54 37 57 30 Z" fill="#4a3222"/>
+                <path d="M54 27 L77 30 L76 58 L52 55 Z" fill="#b57949"/>
+                <!-- Ears & Head -->
+                <ellipse cx="61" cy="16" rx="4" ry="7" transform="rotate(-12 61 16)" fill="#b57949"/>
+                <ellipse cx="81" cy="16" rx="4" ry="7" transform="rotate(12 81 16)" fill="#b57949"/>
+                <rect x="57" y="15" width="33" height="31" rx="14" fill="#b57949"/>
+                <!-- Forelock Hair -->
+                <path d="M60 17 C65 7 81 7 89 16 C84 17 81 16 79 15 C83 18 88 20 92 20 C85 24 77 22 72 19 C74 22 76 24 79 25 C71 25 64 21 60 17 Z" fill="#4a3222"/>
+                <!-- Muzzle -->
+                <rect x="76" y="30" width="21" height="17" rx="8.5" fill="#f3dfc8"/>
+                <circle cx="83" cy="35" r="1.4" fill="#a88463"/>
+                <circle cx="91" cy="35" r="1.4" fill="#a88463"/>
+                <!-- Gentle Eyes -->
+                <ellipse cx="69" cy="26" rx="2.3" ry="3.2" fill="#3b2618"/>
+                <ellipse cx="83" cy="26" rx="2.3" ry="3.2" fill="#3b2618"/>
+                <!-- Gentle Smile -->
+                <path d="M79 39 Q85 44 91 39" stroke="#3b2618" stroke-width="2.3" stroke-linecap="round" fill="none"/>
+                ${scarf}
+            </svg>`;
+        }
+
+        const MASCOT_TIPS = [
+            "안녕! 나는 몽골어 친구 모리야. 먼저 <strong>0과 키릴문자</strong>로 글자를 익힌 뒤, <strong>1과부터</strong> 차례대로 눌러 예습과 퀴즈를 시작해봐!",
+            "각 과에 들어가면 먼저 <strong>핵심 단어와 필수 문장</strong>을 한국어 발음과 함께 공부할 수 있어. 카드를 누르면 발음도 들려줄게!",
+            "우측 상단 <strong>내 계정</strong> 버튼을 누르면 나만의 닉네임과 ID로 학습 진행 상황과 XP를 안전하게 저장할 수 있어!",
+            "메뉴에서 <strong>리더보드</strong>를 누르면 다른 학습자들과 주간 XP 순위를 겨루고, <strong>업적 & 달력</strong>에서 연속 출석일과 배지를 확인할 수 있어!"
+        ];
+        let currentTipIndex = 0;
+
+        window.cycleMascotTip = function() {
+            playChime('click');
+            currentTipIndex = (currentTipIndex + 1) % MASCOT_TIPS.length;
+            const speechEl = document.getElementById('mapMascotSpeech');
+            if (speechEl) speechEl.innerHTML = MASCOT_TIPS[currentTipIndex];
+        };
+
+        function initMascots() {
+            const defaultSvg = getMascotSVG('default');
+            ['mapMascotAvatar', 'leaderboardMascotAvatar', 'achievementsMascotAvatar'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = defaultSvg;
+            });
+        }
+
+        // Speech Synthesis helper
+        function speakMongolian(text) {
+            playChime('click');
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'mn-MN';
+                utter.rate = 0.85;
+                window.speechSynthesis.speak(utter);
+            }
+        }
+
+        // Persist User Data (LocalStorage + Firestore Sync)
+        async function saveUserData() {
+            localStorage.setItem(`morlingo_user_${userState.userId}`, JSON.stringify(userState));
+            localStorage.setItem('morlingo_last_user', userState.userId);
+            updateUIStats();
+
+            try {
+                if (window.firebaseDb && window.appId) {
+                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const userRef = doc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'users', userState.userId);
+                    await setDoc(userRef, userState, { merge: true });
+                }
+            } catch (err) {
+                console.warn("Firestore sync skipped:", err);
+            }
+        }
+
+        async function loadUserData(userId, customName = null) {
+            const saved = localStorage.getItem(`morlingo_user_${userId}`);
+            const today = new Date().toISOString().split('T')[0];
+
+            if (saved) {
+                userState = JSON.parse(saved);
+                if (customName) userState.userName = customName;
+            } else {
+                userState = {
+                    userId: userId,
+                    userName: customName || '학습자',
+                    xp: 0,
+                    streak: 1,
+                    completedStages: [],
+                    activeDates: [today],
+                    league: '브론즈'
+                };
+            }
+
+            try {
+                if (window.firebaseDb && window.appId) {
+                    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const userRef = doc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'users', userId);
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userState = { ...userState, ...snap.data() };
+                        if (customName) userState.userName = customName;
+                    }
+                }
+            } catch (err) {}
+
+            if (!userState.activeDates.includes(today)) {
+                userState.activeDates.push(today);
+                userState.streak += 1;
+            }
+
+            await saveUserData();
+            renderStageMap();
+            renderLeaderboard();
+            renderCalendar();
+            renderAchievements();
+        }
+
+        // Update Header & Profile Numbers
+        function updateUIStats() {
+            if (userState.xp >= 500) userState.league = '다이아몬드';
+            else if (userState.xp >= 250) userState.league = '골드';
+            else if (userState.xp >= 100) userState.league = '실버';
+            else userState.league = '브론즈';
+
+            document.getElementById('headerStreakVal').innerText = userState.streak;
+            document.getElementById('headerXPVal').innerText = userState.xp;
+            document.getElementById('headerLeagueVal').innerText = userState.league;
+            document.getElementById('headerUserName').innerText = userState.userName;
+            document.getElementById('mapTitleUser').innerText = `${userState.userName}님의 학습 코스`;
+            document.getElementById('streakDaysCount').innerText = userState.streak;
+            document.getElementById('leagueTitle').innerText = `${userState.league} 리그`;
+
+            document.getElementById('currentUserIdText').innerText = userState.userId;
+            document.getElementById('accountXPText').innerText = `${userState.xp} XP`;
+            document.getElementById('accountStagesText').innerText = `${userState.completedStages.length} / 20 과`;
+        }
+
+        // Navigation Tab Switcher (Exposed to Global Window)
+        window.switchNavTab = function(tabName) {
+            playChime('click');
+            document.querySelectorAll('.view-content').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`view-${tabName}`);
+            if (targetView) targetView.classList.remove('hidden');
+
+            // Desktop Nav Active State
+            document.querySelectorAll('nav .nav-btn').forEach(btn => {
+                btn.classList.remove('bg-sky-50', 'border-sky-200', 'text-duo-blue');
+                btn.classList.add('text-slate-600', 'border-transparent');
+            });
+            const desktopBtn = document.getElementById(`sidebar-${tabName}`);
+            if (desktopBtn) {
+                desktopBtn.classList.add('bg-sky-50', 'border-sky-200', 'text-duo-blue');
+                desktopBtn.classList.remove('text-slate-600', 'border-transparent');
+            }
+
+            // Mobile Nav Active State
+            ['map', 'cyrillic', 'leaderboard', 'achievements'].forEach(t => {
+                const mBtn = document.getElementById(`mobile-${t}`);
+                if (mBtn) {
+                    mBtn.classList.toggle('text-duo-green', t === tabName);
+                    mBtn.classList.toggle('text-slate-400', t !== tabName);
+                }
+            });
+
+            if (tabName === 'cyrillic') renderCyrillicGrid(currentFilter);
+            if (tabName === 'leaderboard') renderLeaderboard();
+            if (tabName === 'achievements') {
+                renderCalendar();
+                renderAchievements();
+            }
+        };
+
+        // Render Winding Stage Map (0과 ~ 10과)
+        function renderStageMap() {
+            const container = document.getElementById('stageMapContainer');
+            container.innerHTML = '';
+
+            const offsets = [0, -45, -70, -35, 25, 65, 45, -15, -60, -25, 20];
+
+            STAGES_DATA.forEach((stage, idx) => {
+                const isCompleted = userState.completedStages.includes(stage.id);
+                // Stage 0 and Stage 1 are unlocked initially; subsequent stages unlock when previous stage is completed
+                const isUnlocked = stage.id <= 1 || userState.completedStages.includes(stage.id - 1) || isCompleted;
+                const offsetX = offsets[idx % offsets.length];
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-col items-center relative z-10 w-full';
+                wrapper.style.transform = `translateX(${offsetX}px)`;
+
+                const btnColor = !isUnlocked
+                    ? 'bg-slate-200 border-slate-300 text-slate-400 locked cursor-not-allowed'
+                    : isCompleted
+                        ? 'bg-duo-yellow border-amber-500 text-white shadow-duo'
+                        : `${stage.color} border-black/20 text-white shadow-duo bounce-gentle`;
+
+                wrapper.innerHTML = `
+                    <button onclick="${isUnlocked ? `startStage(${stage.id})` : ''}" 
+                        class="stage-node w-20 h-20 rounded-full border-b-4 flex flex-col items-center justify-center relative ${btnColor}">
+                        <i class="fa-solid ${isCompleted ? 'fa-check' : (!isUnlocked ? 'fa-lock' : stage.icon)} text-2xl"></i>
+                        <span class="text-[10px] font-black mt-1">${stage.id}과</span>
+                        ${isCompleted ? '<span class="absolute -top-1 -right-1 bg-white text-amber-500 rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-sm border border-amber-200"><i class="fa-solid fa-crown"></i></span>' : ''}
+                    </button>
+                    <div class="mt-2 bg-white px-3 py-1.5 rounded-2xl border-2 border-slate-200 shadow-2xs text-center max-w-[220px]">
+                        <div class="text-xs font-black text-slate-800 truncate">${stage.title}</div>
+                        <div class="text-[10px] font-bold text-slate-400 truncate">${stage.desc}</div>
+                    </div>
+                `;
+                container.appendChild(wrapper);
+            });
+        }
+
+        // Cyrillic Alphabet Grid & Filtering
+        window.filterCyrillic = function(type) {
+            currentFilter = type;
+            document.querySelectorAll('.cyr-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-duo-blue', 'text-white');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            event.target.classList.remove('bg-slate-100', 'text-slate-600');
+            event.target.classList.add('bg-duo-blue', 'text-white');
+            renderCyrillicGrid(type);
+        };
+
+        function renderCyrillicGrid(filter = 'all') {
+            const grid = document.getElementById('cyrillicAlphabetGrid');
+            grid.innerHTML = '';
+
+            const filtered = filter === 'all'
+                ? CYRILLIC_LETTERS
+                : CYRILLIC_LETTERS.filter(item => item.type === filter);
+
+            filtered.forEach(item => {
+                let badgeColor = 'bg-slate-100 text-slate-600';
+                if (item.type === 'male') badgeColor = 'bg-sky-100 text-duo-blue';
+                if (item.type === 'female') badgeColor = 'bg-purple-100 text-duo-purple';
+                if (item.type === 'neutral') badgeColor = 'bg-emerald-100 text-emerald-700';
+
+                const card = document.createElement('button');
+                card.onclick = () => speakMongolian(item.char.split(' ')[0]);
+                card.className = 'bg-white hover:bg-sky-50 active:translate-y-1 border-2 border-slate-200 hover:border-duo-blue rounded-2xl p-4 flex flex-col items-center justify-between transition shadow-2xs text-center';
+                card.innerHTML = `
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${badgeColor} mb-2">${item.desc}</span>
+                    <div class="text-3xl font-black text-slate-800 my-1">${item.char}</div>
+                    <div class="text-xs font-extrabold text-duo-blue mt-1">[${item.kor}]</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Start Lesson Flow
+        window.startStage = function(stageId) {
+            const stage = STAGES_DATA.find(s => s.id === stageId);
+            if (!stage) return;
+
+            if (stage.isCyrillicTabTrigger) {
+                if (!userState.completedStages.includes(0)) {
+                    userState.completedStages.push(0);
+                    userState.xp += 15;
+                    saveUserData();
+                    renderStageMap();
+                }
+                switchNavTab('cyrillic');
+                return;
+            }
+
+            currentStage = stage;
+            hearts = 5;
+            currentStepIdx = 0;
+            lessonQueue = buildLessonQueue(stage);
+
+            document.getElementById('lessonModal').classList.remove('hidden');
+            renderCurrentLessonStep();
+        };
+
+        // Build Lesson Queue: 1. Study Overview -> 2. Choice -> 3. Fill-in-the-blank (All sentences) -> 4. Word Order
+        function buildLessonQueue(stage) {
+            const queue = [];
+
+            // Step 0: Study Overview Card (Words + Sentences with Korean & Pronunciation)
+            queue.push({
+                type: 'study',
+                stage: stage
+            });
+
+            // Step 1: Vocabulary / Sentence Meaning Choice
+            stage.vocabList.slice(0, 3).forEach(v => {
+                const distractors = stage.vocabList
+                    .filter(item => item.kor !== v.kor)
+                    .map(item => item.kor)
+                    .slice(0, 3);
+                while (distractors.length < 3) {
+                    distractors.push("몽골어 기초 표현");
+                }
+                const choices = [v.kor, ...distractors].sort(() => Math.random() - 0.5);
+
+                queue.push({
+                    type: 'choice',
+                    prompt: `'${v.mn}'의 올바른 뜻은 무엇인가요?`,
+                    pron: v.pron,
+                    mnText: v.mn,
+                    answer: v.kor,
+                    choices: choices
+                });
+            });
+
+            // Step 2: Fill-in-the-blank for ALL sentences in the lesson (masking 1 word)
+            stage.sentenceList.forEach(s => {
+                const maskedSentence = s.mn.replace(s.targetWord, ' [ ____ ] ');
+                const choices = [...s.options].sort(() => Math.random() - 0.5);
+
+                queue.push({
+                    type: 'blank',
+                    prompt: "빈칸에 들어갈 알맞은 단어를 고르세요.",
+                    maskedMn: maskedSentence,
+                    fullMn: s.mn,
+                    kor: s.kor,
+                    pron: s.pron,
+                    answer: s.targetWord,
+                    choices: choices
+                });
+            });
+
+            // Step 3: Word Order Exercise for Sentences
+            stage.sentenceList.forEach(s => {
+                const tokens = s.mn.split(/\s+/).filter(Boolean);
+                if (tokens.length >= 2) {
+                    queue.push({
+                        type: 'order',
+                        prompt: "제시된 뜻에 맞게 몽골어 단어를 순서대로 배열하세요.",
+                        kor: s.kor,
+                        pron: s.pron,
+                        fullMn: s.mn,
+                        tokens: [...tokens].sort(() => Math.random() - 0.5),
+                        answerTokens: tokens
+                    });
+                }
+            });
+
+            return queue;
+        }
+
+        function renderCurrentLessonStep() {
+            const step = lessonQueue[currentStepIdx];
+            const container = document.getElementById('exerciseCardContainer');
+            const progressPct = Math.round((currentStepIdx / lessonQueue.length) * 100);
+
+            document.getElementById('lessonProgressBar').style.width = `${progressPct}%`;
+            document.getElementById('lessonHearts').innerText = hearts;
+            document.getElementById('feedbackText').innerHTML = '';
+            const mascotFb = document.getElementById('lessonMascotFeedback');
+            if (mascotFb) {
+                mascotFb.classList.add('hidden');
+                mascotFb.innerHTML = '';
+            }
+
+            const checkBtn = document.getElementById('checkAnswerBtn');
+            checkBtn.className = 'btn-duo-green px-8 py-3.5 rounded-2xl font-black text-base transition';
+            isAnswered = false;
+            selectedOption = null;
+            orderedWords = [];
+
+            if (step.type === 'study') {
+                checkBtn.innerText = '학습 완료 · 퀴즈 시작';
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-slate-200 space-y-5">
+                        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                            <span class="text-xs font-black text-duo-green uppercase">Step 1 · 단어 및 문장 예습</span>
+                            <h3 class="text-xl font-black text-slate-900 mt-1">${step.stage.title}</h3>
+                            <p class="text-xs font-bold text-slate-600 mt-0.5">발음과 뜻을 먼저 익힌 뒤 아래 버튼을 눌러 문제를 풀어보세요.</p>
+                        </div>
+
+                        <div class="space-y-2.5">
+                            <h4 class="text-sm font-black text-slate-800 flex items-center px-1"><i class="fa-solid fa-spell-check text-duo-green mr-2"></i>핵심 단어</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                ${step.stage.vocabList.map(v => `
+                                    <div onclick="speakMongolian('${v.mn.replace(/'/g, "\\'")}')" class="cursor-pointer bg-slate-50 hover:bg-amber-50/70 border-2 border-slate-200 rounded-2xl p-3 flex items-center justify-between transition">
+                                        <div>
+                                            <div class="text-base font-black text-slate-900">${v.mn}</div>
+                                            <div class="text-[11px] font-bold text-duo-green">[${v.pron}]</div>
+                                            <div class="text-xs font-extrabold text-slate-700 mt-0.5">${v.kor}</div>
+                                        </div>
+                                        <i class="fa-solid fa-volume-high text-slate-400"></i>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="space-y-2.5">
+                            <h4 class="text-sm font-black text-slate-800 flex items-center px-1"><i class="fa-solid fa-comment-dots text-duo-purple mr-2"></i>필수 문장 (${step.stage.sentenceList.length}문장)</h4>
+                            <div class="space-y-2.5">
+                                ${step.stage.sentenceList.map(s => `
+                                    <div onclick="speakMongolian('${s.mn.replace(/'/g, "\\'")}')" class="cursor-pointer bg-slate-50 hover:bg-purple-50/60 border-2 border-slate-200 rounded-2xl p-3.5 flex items-center justify-between transition">
+                                        <div>
+                                            <div class="text-base font-black text-slate-900">${s.mn}</div>
+                                            <div class="text-[11px] font-bold text-duo-purple">[${s.pron}]</div>
+                                            <div class="text-xs font-extrabold text-slate-700 mt-0.5">${s.kor}</div>
+                                        </div>
+                                        <i class="fa-solid fa-volume-high text-duo-purple"></i>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (step.type === 'choice') {
+                checkBtn.innerText = '정답 확인';
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-slate-200 space-y-6">
+                        <span class="bg-amber-100 text-duo-green px-3 py-1 rounded-full text-xs font-black">단어 뜻 고르기</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900">${step.prompt}</h3>
+                        
+                        <div onclick="speakMongolian('${step.mnText.replace(/'/g, "\\'")}')" class="cursor-pointer bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 inline-flex items-center space-x-3 shadow-2xs">
+                            <i class="fa-solid fa-volume-high text-duo-green text-xl"></i>
+                            <div>
+                                <div class="text-xl font-black text-slate-900">${step.mnText}</div>
+                                <div class="text-xs font-bold text-slate-500">[${step.pron}]</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3">
+                            ${step.choices.map(c => `
+                                <button onclick="selectChoiceOption(this, '${c.replace(/'/g, "\\'")}')" 
+                                    class="choice-opt-btn w-full text-left bg-white hover:bg-amber-50/50 border-2 border-slate-200 rounded-2xl p-4 font-extrabold text-slate-800 transition">
+                                    ${c}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (step.type === 'blank') {
+                checkBtn.innerText = '정답 확인';
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-slate-200 space-y-6">
+                        <span class="bg-sky-100 text-duo-blue px-3 py-1 rounded-full text-xs font-black">문장 빈칸 채우기</span>
+                        <h3 class="text-xl font-black text-slate-900">${step.prompt}</h3>
+
+                        <div class="bg-slate-50 border-2 border-slate-200 rounded-3xl p-6 space-y-2 shadow-2xs">
+                            <div class="text-xs font-extrabold text-slate-500">한국어 뜻: <span class="text-slate-800">${step.kor}</span></div>
+                            <div class="text-2xl font-black text-slate-900 tracking-wide py-2">${step.maskedMn}</div>
+                            <div class="text-xs font-bold text-duo-blue">전체 발음: [${step.pron}]</div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            ${step.choices.map(c => `
+                                <button onclick="selectChoiceOption(this, '${c.replace(/'/g, "\\'")}')" 
+                                    class="choice-opt-btn bg-white hover:bg-sky-50/50 border-2 border-slate-200 rounded-2xl p-4 font-black text-base text-slate-900 transition text-center">
+                                    ${c}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (step.type === 'order') {
+                checkBtn.innerText = '정답 확인';
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-slate-200 space-y-6">
+                        <span class="bg-purple-100 text-duo-purple px-3 py-1 rounded-full text-xs font-black">단어 배열하기</span>
+                        <h3 class="text-xl font-black text-slate-900">${step.prompt}</h3>
+
+                        <div class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4">
+                            <div class="text-lg font-black text-slate-900">${step.kor}</div>
+                            <div class="text-xs font-bold text-duo-purple mt-1">[${step.pron}]</div>
+                        </div>
+
+                        <div id="orderedWordsZone" class="min-h-[68px] bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-3 flex flex-wrap gap-2 items-center">
+                            <span class="text-xs text-slate-500 font-bold">아래 단어를 탭하여 문장을 완성하세요</span>
+                        </div>
+
+                        <div id="wordBankZone" class="flex flex-wrap gap-2.5 pt-2">
+                            ${step.tokens.map((tok, i) => `
+                                <button id="bank-tok-${i}" onclick="toggleWordToken(${i}, '${tok.replace(/'/g, "\\'")}')" 
+                                    class="bg-white border-2 border-slate-300 shadow-2xs px-4 py-2.5 rounded-2xl font-black text-slate-900 text-base hover:bg-slate-50 transition">
+                                    ${tok}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        window.selectChoiceOption = function(btnEl, val) {
+            if (isAnswered) return;
+            playChime('click');
+            selectedOption = val;
+            document.querySelectorAll('.choice-opt-btn').forEach(b => {
+                b.classList.remove('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+                b.classList.add('border-slate-200', 'bg-white');
+            });
+            btnEl.classList.remove('border-slate-200', 'bg-white');
+            btnEl.classList.add('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+        };
+
+        window.toggleWordToken = function(idx, word) {
+            if (isAnswered) return;
+            playChime('click');
+            const bankBtn = document.getElementById(`bank-tok-${idx}`);
+            const existingPos = orderedWords.findIndex(w => w.idx === idx);
+
+            if (existingPos > -1) {
+                orderedWords.splice(existingPos, 1);
+                bankBtn.classList.remove('opacity-30', 'pointer-events-none');
+            } else {
+                orderedWords.push({ idx, word });
+                bankBtn.classList.add('opacity-30', 'pointer-events-none');
+            }
+
+            const zone = document.getElementById('orderedWordsZone');
+            if (orderedWords.length === 0) {
+                zone.innerHTML = `<span class="text-xs text-slate-400 font-bold">아래 단어를 탭하여 문장을 완성하세요</span>`;
+            } else {
+                zone.innerHTML = orderedWords.map(item => `
+                    <button onclick="toggleWordToken(${item.idx}, '${item.word.replace(/'/g, "\\'")}')" 
+                        class="bg-duo-blue text-white px-3.5 py-2 rounded-xl font-black text-sm shadow-2xs">
+                        ${item.word}
+                    </button>
+                `).join('');
+            }
+        };
+
+        window.submitExerciseAnswer = function() {
+            const step = lessonQueue[currentStepIdx];
+            const feedbackEl = document.getElementById('feedbackText');
+            const checkBtn = document.getElementById('checkAnswerBtn');
+
+            // Study overview advances directly
+            if (step.type === 'study') {
+                playChime('click');
+                currentStepIdx++;
+                renderCurrentLessonStep();
+                return;
+            }
+
+            // If already evaluated, proceed to next question or finish lesson
+            if (isAnswered) {
+                currentStepIdx++;
+                if (currentStepIdx >= lessonQueue.length) {
+                    finishLesson();
+                } else {
+                    renderCurrentLessonStep();
+                }
+                return;
+            }
+
+            let isCorrect = false;
+            let correctLabel = '';
+
+            if (step.type === 'choice' || step.type === 'blank') {
+                if (!selectedOption) {
+                    feedbackEl.innerHTML = `<span class="text-amber-500"><i class="fa-solid fa-circle-exclamation mr-1"></i>보기를 선택해주세요!</span>`;
+                    return;
+                }
+                isCorrect = selectedOption === step.answer;
+                correctLabel = step.answer;
+            } else if (step.type === 'order') {
+                if (orderedWords.length === 0) {
+                    feedbackEl.innerHTML = `<span class="text-amber-500"><i class="fa-solid fa-circle-exclamation mr-1"></i>단어를 배열해주세요!</span>`;
+                    return;
+                }
+                const userSentence = orderedWords.map(w => w.word).join(' ');
+                const targetSentence = step.answerTokens.join(' ');
+                isCorrect = userSentence === targetSentence;
+                correctLabel = targetSentence;
+            }
+
+            isAnswered = true;
+            const mascotFb = document.getElementById('lessonMascotFeedback');
+
+            if (isCorrect) {
+                playChime('success');
+                if (mascotFb) {
+                    mascotFb.innerHTML = getMascotSVG('happy');
+                    mascotFb.classList.remove('hidden');
+                }
+                feedbackEl.innerHTML = `<span class="text-duo-green"><i class="fa-solid fa-circle-check mr-1"></i>정답입니다! 훌륭해요!</span>`;
+                checkBtn.innerText = '계속하기';
+            } else {
+                playChime('error');
+                if (mascotFb) {
+                    mascotFb.innerHTML = getMascotSVG('sad');
+                    mascotFb.classList.remove('hidden');
+                }
+                hearts = Math.max(0, hearts - 1);
+                document.getElementById('lessonHearts').innerText = hearts;
+                feedbackEl.innerHTML = `<span class="text-duo-red"><i class="fa-solid fa-circle-xmark mr-1"></i>아쉬워요! 정답: ${correctLabel}</span>`;
+                checkBtn.className = 'btn-duo-yellow px-8 py-3.5 rounded-2xl font-black text-base transition';
+                checkBtn.innerText = '다음 문제';
+            }
+        };
+
+        async function finishLesson() {
+            document.getElementById('lessonModal').classList.add('hidden');
+            const earnedXp = 25 + hearts * 3;
+            userState.xp += earnedXp;
+
+            if (currentStage && !userState.completedStages.includes(currentStage.id)) {
+                userState.completedStages.push(currentStage.id);
+            }
+
+            await saveUserData();
+            renderStageMap();
+            renderLeaderboard();
+            renderAchievements();
+
+            document.getElementById('earnedXpText').innerText = `+${earnedXp} XP`;
+            document.getElementById('earnedStreakText').innerText = `${userState.streak}일`;
+            document.getElementById('completeModalMessage').innerText = `${currentStage.title} 학습을 완료했습니다!`;
+            document.getElementById('stageCompleteModal').classList.remove('hidden');
+
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+            }
+        }
+
+        window.closeStageCompleteModal = function() {
+            document.getElementById('stageCompleteModal').classList.add('hidden');
+        };
+
+        // Exit Confirmation Modals
+        window.openExitConfirmModal = function() {
+            document.getElementById('confirmExitModal').classList.remove('hidden');
+        };
+        window.closeExitConfirmModal = function() {
+            document.getElementById('confirmExitModal').classList.add('hidden');
+        };
+        window.exitLessonConfirmed = function() {
+            closeExitConfirmModal();
+            document.getElementById('lessonModal').classList.add('hidden');
+        };
+
+        // Account Modal Handlers
+        window.openAuthModal = function() {
+            document.getElementById('authNameInput').value = userState.userName;
+            document.getElementById('authUserIdInput').value = userState.userId;
+            document.getElementById('authModal').classList.remove('hidden');
+        };
+        window.closeAuthModal = function() {
+            document.getElementById('authModal').classList.add('hidden');
+        };
+        window.handleUserLogin = async function() {
+            const nameVal = document.getElementById('authNameInput').value.trim() || '학습자';
+            let idVal = document.getElementById('authUserIdInput').value.trim();
+            if (!idVal) {
+                idVal = 'user_' + Math.random().toString(36).substring(2, 8);
+            }
+            await loadUserData(idVal, nameVal);
+            closeAuthModal();
+            playChime('success');
+        };
+        window.handleGuestLogin = async function() {
+            await loadUserData('guest_user', '게스트 학습자');
+            closeAuthModal();
+        };
+
+        // Leaderboard Rendering
+        function renderLeaderboard() {
+            const listEl = document.getElementById('leaderboardList');
+            const rivals = [
+                { name: '바트볼드 (Батболд)', xp: 340, badge: '🇲🇳' },
+                { name: '울란바토르유학생', xp: 215, badge: '🎓' },
+                { name: '초원의바람', xp: 140, badge: '🐎' },
+                { name: '어기 (Өгий)', xp: 85, badge: '⭐' },
+                { name: '몽골어초보', xp: 35, badge: '🌱' },
+                { name: `${userState.userName} (나)`, xp: userState.xp, isMe: true, badge: '🔥' }
+            ].sort((a, b) => b.xp - a.xp);
+
+            listEl.innerHTML = rivals.map((r, idx) => {
+                const rank = idx + 1;
+                const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+                return `
+                    <div class="flex items-center justify-between p-4 ${r.isMe ? 'bg-sky-50/80 font-black' : ''}">
+                        <div class="flex items-center space-x-3">
+                            <span class="w-7 text-center font-black text-slate-600">${rankBadge}</span>
+                            <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-base border border-slate-200">${r.badge}</div>
+                            <div>
+                                <div class="text-sm font-extrabold text-slate-800">${r.name}</div>
+                                ${rank <= 3 ? '<span class="text-[10px] font-black text-duo-green">승급권</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="text-sm font-black text-sky-600">${r.xp} XP</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Streak Calendar Rendering
+        window.openStreakCalendarModal = function() {
+            switchNavTab('achievements');
+        };
+
+        window.changeCalendarMonth = function(delta) {
+            calendarDate.setMonth(calendarDate.getMonth() + delta);
+            renderCalendar();
+        };
+
+        function renderCalendar() {
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            document.getElementById('calendarMonthLabel').innerText = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isStudied = userState.activeDates.includes(dateStr);
+                grid.innerHTML += `
+                    <div class="py-2 rounded-xl font-black ${isStudied ? 'bg-amber-400 text-white shadow-2xs' : 'bg-white text-slate-600 border border-slate-100'}">
+                        ${d}
+                    </div>
+                `;
+            }
+        }
+
+        // Achievements Grid
+        function renderAchievements() {
+            const badges = [
+                { title: '첫 걸음', desc: '0과 키릴문자 또는 1과 학습 시작', icon: 'fa-shoe-prints', unlocked: userState.completedStages.length >= 1 },
+                { title: '꾸준한 학습자', desc: '누적 50 XP 달성', icon: 'fa-bolt', unlocked: userState.xp >= 50 },
+                { title: '중급 도약', desc: '10과까지 기초 문법 완료', icon: 'fa-circle-question', unlocked: userState.completedStages.includes(10) },
+                { title: '몽골어 정복자', desc: '전체 20과 커리큘럼 완수', icon: 'fa-crown', unlocked: userState.completedStages.includes(20) }
+            ];
+
+            document.getElementById('achievementsGrid').innerHTML = badges.map(b => `
+                <div class="p-4 rounded-2xl border-2 ${b.unlocked ? 'bg-purple-50/50 border-duo-purple' : 'bg-slate-50 border-slate-200 opacity-60'} flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-2xl ${b.unlocked ? 'bg-duo-purple text-white' : 'bg-slate-200 text-slate-400'} flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid ${b.icon}"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-black text-slate-800">${b.title}</div>
+                        <div class="text-xs font-bold text-slate-500">${b.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize App on Window Load
+        window.addEventListener('DOMContentLoaded', async () => {
+            initMascots();
+            const lastUserId = localStorage.getItem('morlingo_last_user') || 'guest_user';
+            await loadUserData(lastUserId);
+            switchNavTab('map');
+        });
+    </script>
+</body>
+</html>
